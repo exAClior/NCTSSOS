@@ -54,7 +54,7 @@ function cyclic_canon(supp, coe; type=Float64)
     ncoe = zeros(type, l)
     for (i,item) in enumerate(supp)
         bi = min(_cyclic_canon(item), _cyclic_canon(reverse(item)))
-        Locb = bfind(nsupp, l, bi)
+        Locb = searchsortedfirst(nsupp, bi)
         ncoe[Locb] += coe[i]
     end
     return nsupp,ncoe
@@ -91,7 +91,7 @@ function sym_canon(supp, coe; type=Float64)
     l = length(nsupp)
     ncoe = zeros(type, l)
     for (i,item) in enumerate(supp)
-        Locb = bfind(nsupp, l, _sym_canon(item))
+        Locb = searchsortedfirst(nsupp, _sym_canon(item))
         ncoe[Locb] += coe[i]
     end
     return nsupp,ncoe
@@ -199,30 +199,6 @@ function _comm(w::Monomial{false}, x, partition)
     return prod([w.vars[ind1]; w.vars[ind2]] .^ [w.z[ind1]; w.z[ind2]])
 end
 
-function bfind(A, l, a; lt=isless, rev=false)
-    low = 1
-    high = l
-    while low <= high
-        mid = Int(ceil(1/2*(low+high)))
-        if isequal(A[mid], a)
-           return mid
-        elseif lt(A[mid], a)
-            if rev == false
-                low = mid+1
-            else
-                high = mid-1
-            end
-        else
-            if rev == false
-                high = mid-1
-            else
-                low = mid+1
-            end
-        end
-    end
-    return nothing
-end
-
 function permutation(a)
     b = sparse(a)
     ua = convert(Vector{UInt16}, b.nzind)
@@ -266,7 +242,7 @@ function polys_info(pop, x)
             vars = mon[i].vars[ind]
             exp = mon[i].z[ind]
             for j = 1:length(vars)
-                l = bfind(x, n, vars[j], rev=true)
+                l = searchsortedfirst(x, vars[j]; rev=true)
                 append!(supp[k][i], l*ones(UInt16, exp[j]))
             end
         end
@@ -274,6 +250,11 @@ function polys_info(pop, x)
     return n,supp,coe
 end
 
+# | f
+# | - a: coefficients
+# | - x: monomials
+# | --- x[i].vars: variables     # NOTE: same for all i, allow repetition?!
+# | --- x[i].z: exponents
 function poly_info(f, x)
     n = length(x)
     mon = monomials(f)
@@ -285,7 +266,7 @@ function poly_info(f, x)
         vars = mon[i].vars[ind]
         exp = mon[i].z[ind]
         for j = 1:length(vars)
-            k = bfind(x, n, vars[j], rev=true)
+            k = searchsortedfirst(x, vars[j]; rev=true)
             append!(supp[i], k*ones(UInt16, exp[j]))
         end
     end
@@ -434,8 +415,12 @@ function arrange(p, vars; obj="eigen", partition=0, constraint=nothing)
     nmons = unique(sort(mons))
     ncoe = zeros(typeof(coe[1]), length(nmons))
     for (i,item) in enumerate(coe)
-        Locb = bfind(nmons, length(nmons), mons[i])
+        Locb = searchsortedfirst(nmons, mons[i])
         ncoe[Locb] += coe[i]
     end
     return nmons,ncoe
+end
+
+function bfind(a, n, x; lt=isless)
+    return searchsortedfirst(a, x; lt=lt)
 end

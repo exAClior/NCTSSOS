@@ -48,11 +48,14 @@ function nctssos_first(supp::Vector{Vector{UInt16}}, coe, n::Int; order=0, newto
     println("NCTSSOS is launching...")
     if order == 0
         order = Int(maximum(length.(supp))/2)
+        @show order
     end
     if obj == "trace"
         supp,coe = cyclic_canon(supp, coe)
     else
         supp,coe = sym_canon(supp, coe)
+        @show supp
+        @show coe
     end
     if newton == true && constraint === nothing
         if obj == "trace"
