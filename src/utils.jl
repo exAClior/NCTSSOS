@@ -199,6 +199,11 @@ function _comm(w::Monomial{false}, x, partition)
     return prod([w.vars[ind1]; w.vars[ind2]] .^ [w.z[ind1]; w.z[ind2]])
 end
 
+function bfind(a, n, x; lt=isless, rev=false)
+    idx = searchsortedfirst(view(a, 1:n), x; lt, rev)
+    return x == a[idx] ? idx : nothing
+end
+
 function permutation(a)
     b = sparse(a)
     ua = convert(Vector{UInt16}, b.nzind)
@@ -250,27 +255,20 @@ function polys_info(pop, x)
     return n,supp,coe
 end
 
+
 # | f
 # | - a: coefficients
 # | - x: monomials
 # | --- x[i].vars: variables     # NOTE: same for all i, allow repetition?!
 # | --- x[i].z: exponents
 function poly_info(f, x)
-    n = length(x)
-    mon = monomials(f)
-    coe = coefficients(f)
-    lm = length(mon)
-    supp = [UInt16[] for i=1:lm]
-    for i = 1:lm
-        ind = mon[i].z .> 0
-        vars = mon[i].vars[ind]
-        exp = mon[i].z[ind]
-        for j = 1:length(vars)
-            k = searchsortedfirst(x, vars[j]; rev=true)
-            append!(supp[i], k*ones(UInt16, exp[j]))
+    supp = map(monomials(f)) do mon
+        mapreduce(vcat, zip(mon.vars, mon.z)) do (var, exp)
+            k = searchsortedfirst(x, var; rev=true)
+            fill(UInt16(k), exp)
         end
     end
-    return n,supp,coe
+    return length(x), supp, coefficients(f)
 end
 
 function isless_td(a, b)
@@ -415,12 +413,8 @@ function arrange(p, vars; obj="eigen", partition=0, constraint=nothing)
     nmons = unique(sort(mons))
     ncoe = zeros(typeof(coe[1]), length(nmons))
     for (i,item) in enumerate(coe)
-        Locb = searchsortedfirst(nmons, mons[i])
+        Locb = bfind(nmons, length(nmons), mons[i])
         ncoe[Locb] += coe[i]
     end
     return nmons,ncoe
-end
-
-function bfind(a, n, x; lt=isless)
-    return searchsortedfirst(a, x; lt=lt)
 end
