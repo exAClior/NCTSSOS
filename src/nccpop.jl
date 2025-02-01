@@ -32,7 +32,6 @@ Return the optimum and other auxiliary data.
 - `order`: the relaxation order of the moment-SOHS hierarchy.
 - `numeq`: the number of equality constraints.
 """
-
 function nctssos_first(pop::Vector{Polynomial{false, T}} where T<:Number, x::Vector{PolyVar{false}}, order::Int; numeq=0, 
     reducebasis=false, TS="block", add_soc=false, obj="eigen", merge=false, md=3, solve=true, Gram=false, QUIET=false,
     solver="Mosek", partition=0, constraint=nothing, normality=false, cosmo_setting=cosmo_para())

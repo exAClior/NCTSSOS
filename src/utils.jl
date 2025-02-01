@@ -26,6 +26,8 @@ function get_basis(n, d)
     return basis
 end
 
+# get smallest sorted cyclic permutation of a vector
+# why need this?
 function _cyclic_canon(a::Vector{UInt16})
     if isempty(a)
         return a
@@ -34,6 +36,7 @@ function _cyclic_canon(a::Vector{UInt16})
     end
 end
 
+#TODO who calls this?
 function _cyclic_canon(w::Monomial{false})
     ind = w.z .> 0
     wz = w.z[ind]
@@ -48,7 +51,7 @@ end
 
 function cyclic_canon(supp, coe; type=Float64)
     nsupp = [min(_cyclic_canon(word), _cyclic_canon(reverse(word))) for word in supp]
-    sort!(nsupp)
+    sort!(nsupp) #TODO argh, unique then sort?
     unique!(nsupp)
     l = length(nsupp)
     ncoe = zeros(type, l)
@@ -60,6 +63,8 @@ function cyclic_canon(supp, coe; type=Float64)
     return nsupp,ncoe
 end
 
+
+# transform support to min btw itself and its h.c
 function _sym_canon(a::Vector{UInt16})
     i = 1
     while i <= Int(ceil((length(a)-1)/2))
@@ -199,6 +204,13 @@ function _comm(w::Monomial{false}, x, partition)
     return prod([w.vars[ind1]; w.vars[ind2]] .^ [w.z[ind1]; w.z[ind2]])
 end
 
+# find index of a within A via binary search
+# A: vector of variables
+# l: length of A
+# a: variable to be searched
+# lt: function used for comparison
+# rev: if A is sorted in reverse order, maybe related to
+# DynamicPolynomials ordering change in recent versions
 function bfind(A, l, a; lt=isless, rev=false)
     low = 1
     high = l
@@ -207,13 +219,13 @@ function bfind(A, l, a; lt=isless, rev=false)
         if isequal(A[mid], a)
            return mid
         elseif lt(A[mid], a)
-            if rev == false
+            if rev == false #TODO
                 low = mid+1
             else
                 high = mid-1
             end
         else
-            if rev == false
+            if rev == false #TODO
                 high = mid-1
             else
                 low = mid+1
@@ -274,6 +286,28 @@ function polys_info(pop, x)
     return n,supp,coe
 end
 
+"""
+    n, supp, coe = poly_info(f, x)
+
+Extract information about a noncommutative polynomial.
+
+# Arguments
+- `f`: The noncommutative polynomial to analyze
+- `x`: The vector of noncommutative variables
+
+# Returns
+- `n`: Number of variables
+- `supp`: Support of the polynomial as a vector of vectors of variable indices
+- `coe`: Coefficients of the polynomial
+
+The function processes a noncommutative polynomial `f` with respect to variables `x` and returns:
+1. The number of variables `n`
+2. The support `supp` - a vector where each element is a vector of variable indices representing a monomial
+3. The coefficients `coe` of each monomial
+
+For example, for f = x₁x₂ + 2x₂x₁ with x = [x₁, x₂], it would return:
+n = 2, supp = [[1,2], [2,1]], coe = [1.0, 2.0]
+"""
 function poly_info(f, x)
     n = length(x)
     mon = monomials(f)
@@ -369,11 +403,13 @@ function issym(word, vargroup)
     return true
 end
 
+# assuming each variable is Hermitian
 function star(w::Monomial{false})
     return prod(reverse(w.vars).^reverse(w.z))
 end
 
 function star(p::Polynomial{false})
+    #TODO do we really need coefficients(p)' here?
     return coefficients(p)'*star.(monomials(p))
 end
 
