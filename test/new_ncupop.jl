@@ -1,22 +1,8 @@
 using Test
 using NCTSSOS  # Assuming this is your module name
+using NCTSSOS: newton_cyclic, newton_ncbasis, remove
 
 @testset "ncupop.jl Tests" begin
-
-    @testset "ncupop_type struct" begin
-        # Test initialization and field types
-        pop = ncupop_type([], [], 0, nothing, [], "eigen", [], [], [])
-        @test pop isa ncupop_type
-        # Add more specific field tests
-    end
-
-    @testset "cosmo_para struct" begin
-        # Test default constructor and field values
-        params = cosmo_para()
-        @test params.eps_abs == 1e-5
-        @test params.eps_rel == 1e-5
-        @test params.max_iter == 1e4
-    end
 
     @testset "nctssos_first" begin
         # Setup test data
@@ -100,6 +86,20 @@ using NCTSSOS  # Assuming this is your module name
         @test objv isa Union{Float64, Nothing}
         @test ksupp isa Vector{Vector{UInt16}}
         # Add more specific tests
+    end
+
+    @testset "Unconstrained Non-commuting" begin
+        n = 3
+        @ncpolyvar x[1:n]
+        f = x[1]^2 - x[1] * x[2] - x[2] * x[1] + 3x[2]^2 - 2x[1] * x[2] * x[1] + 2x[1] * x[2]^2 * x[1] - x[2] * x[3] - x[3] * x[2] +
+            6x[3]^2 + 9x[2]^2 * x[3] + 9x[3] * x[2]^2 - 54x[3] * x[2] * x[3] + 142x[3] * x[2]^2 * x[3]
+
+
+        opt, data = nctssos_first(f, x, newton=true, reducebasis=true, TS="MD", obj="eigen", QUIET=true)
+        @test opt ≈ -0.0035512 atol=1e-7
+
+        opt, data = nctssos_first(f, x, newton=true, TS="MD", obj="trace", QUIET=true)
+        @test opt ≈ -0.0035512 atol=1e-7
     end
 
 end

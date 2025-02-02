@@ -181,6 +181,8 @@ function remove(csupp, dw, n)
     set_optimizer_attribute(model, MOI.Silent(), true)
     t = @variable(model)
     alpha = @variable(model, [1:n])
+    # csupp is a support in function
+    # dw is a monomial of n variables with at most order d
     @constraint(model, [i=1:length(csupp)], alpha'*(csupp[i].-2*dw)<=t)
     @objective(model, Min, t)
     optimize!(model)
