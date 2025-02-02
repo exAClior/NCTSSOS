@@ -1,3 +1,18 @@
+"""
+    get_basis(n, d)
+
+Generate a basis of monomials in `n` variables up to degree `d`.
+
+# Arguments
+- `n::Int`: Number of variables
+- `d::Int`: Maximum degree of monomials
+
+# Returns
+- `basis::Matrix{UInt8}`: A matrix where each column represents a monomial. The entry `basis[i,j]` 
+  gives the exponent of variable `i` in monomial `j`. The monomials are ordered lexicographically.
+
+# Example
+"""
 function get_basis(n, d)
     lb = binomial(n+d, d)
     basis = zeros(UInt8, n, lb)
@@ -26,8 +41,6 @@ function get_basis(n, d)
     return basis
 end
 
-# get smallest sorted cyclic permutation of a vector
-# why need this?
 function _cyclic_canon(a::Vector{UInt16})
     if isempty(a)
         return a
@@ -110,6 +123,7 @@ function get_ncbasis(n, d; ind=Vector{UInt16}(1:n), binary=false)
     return basis
 end
 
+
 function _get_ncbasis_deg(n, d; ind=Vector{UInt16}(1:n), binary=false)
     if d > 0
         basis = Vector{UInt16}[]
@@ -132,6 +146,8 @@ function _get_ncbasis_deg(n, d; ind=Vector{UInt16}(1:n), binary=false)
     end
 end
 
+# simplify a word by removing consecutive duplicates
+# if the constraint is "unipotent", then we also remove the word if it has a repeated variable
 function reduce_cons!(word::Vector{UInt16}; constraint="unipotent")
     i = 1
     while i < length(word)
@@ -154,7 +170,7 @@ function reduce_cons(w::Monomial{false}; constraint="unipotent")
     else
         w.z[ind] .= 1
     end
-    return prod(w.vars .^ w.z)
+    return prod(w.vars .^ w.z) #TODO better to filter out zero exponents here
 end
 
 function reduce!(word::Vector{UInt16}; obj="eigen", partition=0, constraint=nothing)

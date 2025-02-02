@@ -155,6 +155,18 @@ function nctssos_higher!(data::ncupop_type; TS="block", merge=false, md=3, solve
     return opt,data
 end
 
+"""
+    cc(a::Vector{UInt16}, n::Int)
+
+Count the number of occurrences of each element in vector `a`.
+
+# Arguments
+- `a::Vector{UInt16}`: Input vector of elements to count
+- `n::Int`: Number of unique possible elements (size of counting array)
+
+# Returns
+- `ca::Vector{UInt8}`: Array where `ca[i]` contains the count of element `i` in `a`
+"""
 function cc(a::Vector{UInt16}, n::Int)
     ua = unique(a)
     ca = zeros(UInt8, n)
@@ -179,18 +191,52 @@ function remove(csupp, dw, n)
     end
 end
 
+# supp: support
+# n : number of varaibles
+# d : maximal order of monomials
+"""
+    newton_cyclic(supp, n, d)
+
+Generate a monomial basis for cyclic polynomials using the Newton chip method.
+
+This function:
+1. Gets a preliminary basis of monomials up to degree d
+2. Processes the support by counting variable occurrences and adding a constant term
+3. Filters the basis by checking if each monomial satisfies certain constraints
+4. Adds permutations of valid monomials to the final basis
+5. Returns a sorted unique basis
+
+# Arguments
+- `supp::Vector{Vector{UInt16}}`: Support of the polynomial (list of monomials)
+- `n::Int`: Number of variables
+- `d::Int`: Maximum degree of monomials
+
+# Returns
+- `basis::Vector{Vector{UInt16}}`: Filtered and processed monomial basis
+"""
 function newton_cyclic(supp, n, d)
+    # Get preliminary basis of monomials up to degree d
     pbasis = get_basis(n,d)
+    
+    # Initialize basis with empty monomial (constant term)
     basis = [UInt16[]]
+    
+    # Count variable occurrences in each monomial of support
     csupp = cc.(supp, n)
+    
+    # Add zero vector (constant term) and make unique
     pushfirst!(csupp, zeros(UInt8, n))
     sort!(csupp)
     unique!(csupp)
+    
+    # Filter basis by checking constraints and add permutations
     for i = 2:size(pbasis,2)
         if remove(csupp, pbasis[:,i], n)
             append!(basis, permutation(pbasis[:,i]))
         end
     end
+    
+    # Return sorted unique basis
     sort!(basis)
     return basis
 end
