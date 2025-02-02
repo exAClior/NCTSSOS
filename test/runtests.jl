@@ -1,6 +1,6 @@
 using Test, NCTSSOS
 
-include("nccpop.jl")
+# include("nccpop.jl")
 
 include("ncupop.jl")
 

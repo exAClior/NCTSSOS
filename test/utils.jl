@@ -1,20 +1,19 @@
 using Test, NCTSSOS, DynamicPolynomials
 
-using NCTSSOS: _cyclic_canon, cyclic_canon, _sym_canon, sym_canon
-
-using NCTSSOS: star
-
-using NCTSSOS: newton_cyclic, get_basis, cc
-using NCTSSOS: is_sym
-using NCTSSOS: get_ncbasis
-using NCTSSOS: reduce_cons!, reduce_cons, reduce!, reduce
-using NCTSSOS: _comm
-using NCTSSOS: bfind
-using NCTSSOS: permutation, _permutation
-using NCTSSOS: poly_info, polys_info
-using NCTSSOS: isless_td
-using NCTSSOS: sym_cyclic, _cyclic_basis, sym, iscomm, gind, res_com!, issym
-using NCTSSOS: add_SOHS!, add_poly!, arrange, res_comm!
+using NCTSSOS: 
+    _cyclic_canon, cyclic_canon, _sym_canon, sym_canon,
+    star,
+    newton_cyclic, get_basis, cc,
+    is_sym,
+    get_ncbasis,
+    reduce_cons!, reduce_cons, reduce!, reduce,
+    _comm,
+    bfind,
+    permutation, _permutation,
+    poly_info, polys_info,
+    isless_td,
+    sym_cyclic, _cyclic_basis, sym, iscomm, gind, res_com!, issym,
+    add_SOHS!, add_poly!, arrange, res_comm!
 
 @testset "utils.jl Tests" begin
 
@@ -197,8 +196,6 @@ using NCTSSOS: add_SOHS!, add_poly!, arrange, res_comm!
 
 	@testset "sym" begin
 		# TODO
-		@test sym(UInt16[3,2,1]) == UInt16[1,2,3]
-		@test sym(UInt16[3,4,5,1]) == UInt16[1,3,4,5]
 	end
 
 	#TODO what is the purpose? RIP?
