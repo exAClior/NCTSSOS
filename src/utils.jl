@@ -252,7 +252,7 @@ function bfind(A, l, a; lt=isless, rev=false)
 end
 
 function permutation(a)
-    b = sparse(a)
+    b = sparse(a) # a is a vector, see ncupop.jl for usage
     ua = convert(Vector{UInt16}, b.nzind)
     na = convert(Vector{UInt16}, b.nzval)
     return _permutation(ua, na)
@@ -383,6 +383,8 @@ function iscomm(a, vargroup)
     return true
 end
 
+# get index vargroup s.t k is less than sum of vargroup[1:i] ? 
+# what's the purpose
 function gind(k, vargroup)
     return findfirst(i -> k <= sum(vargroup[1:i]), 1:length(vargroup))
 end
