@@ -1,24 +1,22 @@
-using Test
-using NCTSSOS  # Assuming this is your module name
+using Test, NCTSSOS, DynamicPolynomials
 using NCTSSOS: remove
 
 @testset "ncupop.jl Tests" begin
 
-    @testset "nctssos_first" begin
-        # Setup test data
-        x = @ncpolyvar x[1:2]
-        f = x[1]^2 + x[2]^2
-        
-        # Test basic functionality
-        opt, data = nctssos_first(f, x)
-        @test opt isa Float64
-        @test data isa ncupop_type
-        
-        # Test different options
-        opt2, data2 = nctssos_first(f, x, obj="trace", partition=1)
-        @test opt2 isa Float64
-        # Add more specific tests
+    @testset "Unconstrained Non-commuting" begin
+        n = 3
+        @ncpolyvar x[1:n]
+        f = x[1]^2 - x[1] * x[2] - x[2] * x[1] + 3x[2]^2 - 2x[1] * x[2] * x[1] + 2x[1] * x[2]^2 * x[1] - x[2] * x[3] - x[3] * x[2] +
+            6x[3]^2 + 9x[2]^2 * x[3] + 9x[3] * x[2]^2 - 54x[3] * x[2] * x[3] + 142x[3] * x[2]^2 * x[3]
+
+
+        opt, data = nctssos_first(f, x, newton=true, reducebasis=true, TS="MD", obj="eigen", QUIET=true)
+        @test opt ≈ -0.0035512 atol=1e-7
+
+        opt, data = nctssos_first(f, x, newton=true, TS="MD", obj="trace", QUIET=true)
+        @test opt ≈ -0.0035512 atol=1e-7
     end
+
 
     @testset "nctssos_higher!" begin
         # Setup initial data
@@ -107,18 +105,5 @@ using NCTSSOS: remove
         # Add more specific tests
     end
 
-    @testset "Unconstrained Non-commuting" begin
-        n = 3
-        @ncpolyvar x[1:n]
-        f = x[1]^2 - x[1] * x[2] - x[2] * x[1] + 3x[2]^2 - 2x[1] * x[2] * x[1] + 2x[1] * x[2]^2 * x[1] - x[2] * x[3] - x[3] * x[2] +
-            6x[3]^2 + 9x[2]^2 * x[3] + 9x[3] * x[2]^2 - 54x[3] * x[2] * x[3] + 142x[3] * x[2]^2 * x[3]
-
-
-        opt, data = nctssos_first(f, x, newton=true, reducebasis=true, TS="MD", obj="eigen", QUIET=true)
-        @test opt ≈ -0.0035512 atol=1e-7
-
-        opt, data = nctssos_first(f, x, newton=true, TS="MD", obj="trace", QUIET=true)
-        @test opt ≈ -0.0035512 atol=1e-7
-    end
 
 end
