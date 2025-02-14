@@ -1,0 +1,13 @@
+#+title: Test Adding Progress
+
+I record functions added test organized by file containing the function.
+
+
+* ncupop.jl
+
+
+* TODO utils.jl [1/2]
+- [X] ~poly_info~
+- [ ] ~_cyclic_canon~ [1/2]
+  1. [X] ~a::Vector~
+  2. [ ] ~w::Monomial{false}~ who uses this function?

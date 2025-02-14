@@ -64,7 +64,7 @@ end
 
 function cyclic_canon(supp, coe; type=Float64)
     nsupp = [min(_cyclic_canon(word), _cyclic_canon(reverse(word))) for word in supp]
-    sort!(nsupp) #TODO argh, unique then sort?
+    sort!(nsupp) 
     unique!(nsupp)
     l = length(nsupp)
     ncoe = zeros(type, l)
