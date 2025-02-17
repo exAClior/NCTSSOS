@@ -6,8 +6,13 @@ I record functions added test organized by file containing the function.
 * ncupop.jl
 
 
-* TODO utils.jl [1/2]
+* TODO utils.jl [2/4]
 - [X] ~poly_info~
-- [ ] ~_cyclic_canon~ [1/2]
+- [-] ~_cyclic_canon~ [1/2]
   1. [X] ~a::Vector~
   2. [ ] ~w::Monomial{false}~ who uses this function?
+- [X] ~cyclic_canon~
+- [ ] ~_sym_canon~ [0/2]
+  1. [ ] ~a:Vector~
+  2. [ ] ~w::Monomial~
+- [ ] ~star~

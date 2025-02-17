@@ -45,7 +45,6 @@ using NCTSSOS:
         empty_monomial = x[3]^0 * x[4]^0
         @test _cyclic_canon(empty_monomial) == empty_monomial
 
-
         nsupp, ncoe = cyclic_canon(supp, coe)
 
         @test nsupp == [UInt16[1, 1, 2, 2], UInt16[1, 2, 3]]
