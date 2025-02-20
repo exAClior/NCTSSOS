@@ -1,3 +1,18 @@
+"""
+    get_basis(n, d)
+
+Generate a basis of monomials in `n` variables up to degree `d`.
+
+# Arguments
+- `n::Int`: Number of variables
+- `d::Int`: Maximum degree of monomials
+
+# Returns
+- `basis::Matrix{UInt8}`: A matrix where each column represents a monomial. The entry `basis[i,j]` 
+  gives the exponent of variable `i` in monomial `j`. The monomials are ordered lexicographically.
+
+# Example
+"""
 function get_basis(n, d)
     lb = binomial(n+d, d)
     basis = zeros(UInt8, n, lb)
@@ -34,6 +49,7 @@ function _cyclic_canon(a::Vector{UInt16})
     end
 end
 
+#TODO who calls this?
 function _cyclic_canon(w::Monomial{false})
     ind = w.z .> 0
     wz = w.z[ind]
@@ -48,7 +64,7 @@ end
 
 function cyclic_canon(supp, coe; type=Float64)
     nsupp = [min(_cyclic_canon(word), _cyclic_canon(reverse(word))) for word in supp]
-    sort!(nsupp)
+    sort!(nsupp) 
     unique!(nsupp)
     l = length(nsupp)
     ncoe = zeros(type, l)
@@ -60,6 +76,8 @@ function cyclic_canon(supp, coe; type=Float64)
     return nsupp,ncoe
 end
 
+
+# transform support to min btw itself and its h.c
 function _sym_canon(a::Vector{UInt16})
     i = 1
     while i <= Int(ceil((length(a)-1)/2))
@@ -105,6 +123,7 @@ function get_ncbasis(n, d; ind=Vector{UInt16}(1:n), binary=false)
     return basis
 end
 
+
 function _get_ncbasis_deg(n, d; ind=Vector{UInt16}(1:n), binary=false)
     if d > 0
         basis = Vector{UInt16}[]
@@ -127,6 +146,8 @@ function _get_ncbasis_deg(n, d; ind=Vector{UInt16}(1:n), binary=false)
     end
 end
 
+# simplify a word by removing consecutive duplicates
+# if the constraint is "unipotent", then we also remove the word if it has a repeated variable
 function reduce_cons!(word::Vector{UInt16}; constraint="unipotent")
     i = 1
     while i < length(word)
@@ -149,7 +170,7 @@ function reduce_cons(w::Monomial{false}; constraint="unipotent")
     else
         w.z[ind] .= 1
     end
-    return prod(w.vars .^ w.z)
+    return prod(w.vars .^ w.z) #TODO better to filter out zero exponents here
 end
 
 function reduce!(word::Vector{UInt16}; obj="eigen", partition=0, constraint=nothing)
@@ -199,6 +220,13 @@ function _comm(w::Monomial{false}, x, partition)
     return prod([w.vars[ind1]; w.vars[ind2]] .^ [w.z[ind1]; w.z[ind2]])
 end
 
+# find index of a within A via binary search
+# A: vector of variables
+# l: length of A
+# a: variable to be searched
+# lt: function used for comparison
+# rev: if A is sorted in reverse order, maybe related to
+# DynamicPolynomials ordering change in recent versions
 function bfind(A, l, a; lt=isless, rev=false)
     low = 1
     high = l
@@ -207,13 +235,13 @@ function bfind(A, l, a; lt=isless, rev=false)
         if isequal(A[mid], a)
            return mid
         elseif lt(A[mid], a)
-            if rev == false
+            if rev == false #TODO
                 low = mid+1
             else
                 high = mid-1
             end
         else
-            if rev == false
+            if rev == false #TODO
                 high = mid-1
             else
                 low = mid+1
@@ -224,7 +252,7 @@ function bfind(A, l, a; lt=isless, rev=false)
 end
 
 function permutation(a)
-    b = sparse(a)
+    b = sparse(a) # a is a vector, see ncupop.jl for usage
     ua = convert(Vector{UInt16}, b.nzind)
     na = convert(Vector{UInt16}, b.nzval)
     return _permutation(ua, na)
@@ -274,6 +302,28 @@ function polys_info(pop, x)
     return n,supp,coe
 end
 
+"""
+    n, supp, coe = poly_info(f, x)
+
+Extract information about a noncommutative polynomial.
+
+# Arguments
+- `f`: The noncommutative polynomial to analyze
+- `x`: The vector of noncommutative variables
+
+# Returns
+- `n`: Number of variables
+- `supp`: Support of the polynomial as a vector of vectors of variable indices
+- `coe`: Coefficients of the polynomial
+
+The function processes a noncommutative polynomial `f` with respect to variables `x` and returns:
+1. The number of variables `n`
+2. The support `supp` - a vector where each element is a vector of variable indices representing a monomial
+3. The coefficients `coe` of each monomial
+
+For example, for f = x₁x₂ + 2x₂x₁ with x = [x₁, x₂], it would return:
+n = 2, supp = [[1,2], [2,1]], coe = [1.0, 2.0]
+"""
 function poly_info(f, x)
     n = length(x)
     mon = monomials(f)
@@ -333,6 +383,8 @@ function iscomm(a, vargroup)
     return true
 end
 
+# get index vargroup s.t k is less than sum of vargroup[1:i] ? 
+# what's the purpose
 function gind(k, vargroup)
     return findfirst(i -> k <= sum(vargroup[1:i]), 1:length(vargroup))
 end
@@ -369,11 +421,13 @@ function issym(word, vargroup)
     return true
 end
 
+# assuming each variable is Hermitian
 function star(w::Monomial{false})
     return prod(reverse(w.vars).^reverse(w.z))
 end
 
 function star(p::Polynomial{false})
+    #TODO do we really need coefficients(p)' here?
     return coefficients(p)'*star.(monomials(p))
 end
 

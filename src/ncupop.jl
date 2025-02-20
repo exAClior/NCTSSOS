@@ -155,6 +155,18 @@ function nctssos_higher!(data::ncupop_type; TS="block", merge=false, md=3, solve
     return opt,data
 end
 
+"""
+    cc(a::Vector{UInt16}, n::Int)
+
+Count the number of occurrences of each element in vector `a`.
+
+# Arguments
+- `a::Vector{UInt16}`: Input vector of elements to count
+- `n::Int`: Number of unique possible elements (size of counting array)
+
+# Returns
+- `ca::Vector{UInt8}`: Array where `ca[i]` contains the count of element `i` in `a`
+"""
 function cc(a::Vector{UInt16}, n::Int)
     ua = unique(a)
     ca = zeros(UInt8, n)
@@ -169,6 +181,8 @@ function remove(csupp, dw, n)
     set_optimizer_attribute(model, MOI.Silent(), true)
     t = @variable(model)
     alpha = @variable(model, [1:n])
+    # csupp is a support in function
+    # dw is a monomial of n variables with at most order d
     @constraint(model, [i=1:length(csupp)], alpha'*(csupp[i].-2*dw)<=t)
     @objective(model, Min, t)
     optimize!(model)
@@ -179,18 +193,52 @@ function remove(csupp, dw, n)
     end
 end
 
+# supp: support
+# n : number of varaibles
+# d : maximal order of monomials
+"""
+    newton_cyclic(supp, n, d)
+
+Generate a monomial basis for cyclic polynomials using the Newton chip method.
+
+This function:
+1. Gets a preliminary basis of monomials up to degree d
+2. Processes the support by counting variable occurrences and adding a constant term
+3. Filters the basis by checking if each monomial satisfies certain constraints
+4. Adds permutations of valid monomials to the final basis
+5. Returns a sorted unique basis
+
+# Arguments
+- `supp::Vector{Vector{UInt16}}`: Support of the polynomial (list of monomials)
+- `n::Int`: Number of variables
+- `d::Int`: Maximum degree of monomials
+
+# Returns
+- `basis::Vector{Vector{UInt16}}`: Filtered and processed monomial basis
+"""
 function newton_cyclic(supp, n, d)
+    # Get preliminary basis of monomials up to degree d
     pbasis = get_basis(n,d)
+    
+    # Initialize basis with empty monomial (constant term)
     basis = [UInt16[]]
+    
+    # Count variable occurrences in each monomial of support
     csupp = cc.(supp, n)
+    
+    # Add zero vector (constant term) and make unique
     pushfirst!(csupp, zeros(UInt8, n))
     sort!(csupp)
     unique!(csupp)
+    
+    # Filter basis by checking constraints and add permutations
     for i = 2:size(pbasis,2)
         if remove(csupp, pbasis[:,i], n)
             append!(basis, permutation(pbasis[:,i]))
         end
     end
+    
+    # Return sorted unique basis
     sort!(basis)
     return basis
 end
@@ -239,7 +287,17 @@ function get_blocks(ksupp, basis; TS="block", obj="eigen", partition=0, constrai
             blocksize = length.(blocks)
             cl = length(blocksize)
         else
-            blocks,cl,blocksize = chordal_cliques!(G, method=TS)
+            # blocks,cl,blocksize = chordal_cliques!(G, method=TS)
+            blocks = get_cliques(tree_decomposition(G, :sa)) #it's ok to not change G
+            blocks = map(x->UInt16.(x),blocks)
+
+
+            cl = length(blocks)
+            blocksize = length.(blocks) 
+
+            @show blocks, typeof(blocks)
+            @show cl, typeof(cl)
+            @show blocksize, typeof(blocksize)
             if merge == true
                 blocks,cl,blocksize = clique_merge!(blocks, d=md, QUIET=true)
             end

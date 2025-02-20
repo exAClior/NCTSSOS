@@ -1,0 +1,3 @@
+[deps]
+DynamicPolynomials = "7c1d4256-1411-5781-91ec-d7bc3513ac07"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
