@@ -287,7 +287,17 @@ function get_blocks(ksupp, basis; TS="block", obj="eigen", partition=0, constrai
             blocksize = length.(blocks)
             cl = length(blocksize)
         else
-            blocks,cl,blocksize = chordal_cliques!(G, method=TS)
+            # blocks,cl,blocksize = chordal_cliques!(G, method=TS)
+            blocks = get_cliques(tree_decomposition(G, :sa)) #it's ok to not change G
+            blocks = map(x->UInt16.(x),blocks)
+
+
+            cl = length(blocks)
+            blocksize = length.(blocks) 
+
+            @show blocks, typeof(blocks)
+            @show cl, typeof(cl)
+            @show blocksize, typeof(blocksize)
             if merge == true
                 blocks,cl,blocksize = clique_merge!(blocks, d=md, QUIET=true)
             end

@@ -26,4 +26,6 @@ include("complex.jl")
 include("add_psatz.jl")
 include("utils.jl")
 
+
+include("omeinsum.jl")
 end

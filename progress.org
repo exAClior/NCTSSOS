@@ -3,16 +3,29 @@
 I record functions added test organized by file containing the function.
 
 
-* ncupop.jl
+* TODO ncupop.jl [1/3]
+- [-] ~nctssos_first~: entry point to SOS [1/2]
+  1. [X] get polynomial information
+  2. [ ] construct SDP
+     1. If did not specify cutoff-order, use just enough to express ~f~
+     2. Simplify ~f~ based on problem via canonicalizing monomials
+     3. If instructed to use Newton method to simplify basis do so with unconstrained variants
+
+- [ ] ~newton_cyclic~ : what is this doing?
+- [X] ~cc~ counts the number of occurrences of each elementn vector ~a~
 
 
-* TODO utils.jl [2/4]
-- [X] ~poly_info~
-- [-] ~_cyclic_canon~ [1/2]
+
+* TODO utils.jl [3/6]
+- [X] ~poly_info~a : get monomials and coefficients from polynomial
+- [-] ~_cyclic_canon~ [1/2] : converts a monomial into cyclic canonical form
   1. [X] ~a::Vector~
   2. [ ] ~w::Monomial{false}~ who uses this function?
-- [X] ~cyclic_canon~
-- [ ] ~_sym_canon~ [0/2]
-  1. [ ] ~a:Vector~
-  2. [ ] ~w::Monomial~
-- [ ] ~star~
+- [X] ~cyclic_canon~ : merge cyclically equivalent terms in polynomial
+- [-] ~_sym_canon~ [1/2] : merge Hermitian equivalent terms in polynomial, assume all variables hermitian
+  1. [X] ~a:Vector~
+  2. [ ] ~w::Monomial~ who uses this function?
+- [-] ~star~ [1/2] : compute the hermitian conjugate of a monomial
+  1. [X] ~w::Monomial~
+  2. [ ] ~p::Polynomial~
+- [X] ~get_basis~: gets all monomial with respect to $n$ *commuting* variables upto degree $d$
