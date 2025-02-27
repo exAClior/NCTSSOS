@@ -1,0 +1,28 @@
+Bell 
+```
+@ncpolyvar x[1:2]
+@ncpolyvar y[1:2]
+f = x[1]*y[1] + x[1]*y[2] + x[2]*y[1] - x[2]*y[2]
+```
+
+
+
+= poly_info()
+
+```
+n = 4
+supp = Vector{Vector{UInt16}}[[[0x0001, 0x0003], [0x0001, 0x0004], [0x0002, 0x0003], [0x0002, 0x0004]]]
+coe = [[-1.0, -1.0, -1.0, 1.0]]
+```
+
+= reduce!
+Simplify support, 
+either via canonicalize,  remove x^2=1 or rearranging commutative variables 
+Input
+```
+ksupp = Vector{UInt16}[[0x0001, 0x0003], [0x0001, 0x0004], [0x0002, 0x0003], [0x0002, 0x0004], [], [0x0001, 0x0001], [0x0002, 0x0002], [0x0003, 0x0003], [0x0004, 0x0004]]
+```
+Output 
+```
+ksupp = Vector{UInt16}[[0x0001, 0x0003], [0x0001, 0x0004], [0x0002, 0x0003], [0x0002, 0x0004], [], [], [], [], []]
+```

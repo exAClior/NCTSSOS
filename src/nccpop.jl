@@ -45,6 +45,7 @@ function nctssos_first(supp::Vector{Vector{Vector{UInt16}}}, coe, n::Int64, orde
     obj="eigen", merge=false, md=3, solve=true, solver="Mosek", Gram=false, QUIET=false, partition=0, constraint=nothing, normality=false, cosmo_setting=cosmo_para())
     println("********************************** NCTSSOS **********************************")
     println("NCTSSOS is launching...")
+    display("I am at nccpop.jl")
     m = length(supp)-1
     dg = [maximum(length.(supp[i])) for i=2:m+1]
     if obj == "trace"
@@ -71,6 +72,7 @@ function nctssos_first(supp::Vector{Vector{Vector{UInt16}}}, coe, n::Int64, orde
             append!(ksupp, _sym_canon.(supp[i+1]))
         end
     end
+    @show basis
     if obj == "trace"
         append!(ksupp, [_cyclic_canon([item[end:-1:1]; item]) for item in basis[1]])
     else
