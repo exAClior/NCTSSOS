@@ -16,7 +16,7 @@ mutable struct cosmo_para
     max_iter::Int64
 end
 
-cosmo_para() = cosmo_para(1e-5, 1e-5, 1e4)
+cosmo_para() = cosmo_para(1e-8, 1e-8, 1e4)
 
 """
     opt,data = nctssos_first(f::Polynomial{false, T} where T<:Number, x::Vector{PolyVar{false}};
@@ -42,17 +42,31 @@ function nctssos_first(f::Polynomial{false, T} where T<:Number, x::Vector{PolyVa
     return opt,data
 end
 
-function nctssos_first(supp::Vector{Vector{UInt16}}, coe, n::Int; order=0, newton=true, reducebasis=true, monosquare=true, TS="block",
-    obj="eigen", partition=0, constraint=nothing, merge=false, md=3, solve=true, Gram=false, solver="Mosek", QUIET=false, cosmo_setting=cosmo_para())
+# Q: is it true that this function computes the first step of the NCTSSOS hierarchy, and nctssos_higher! incrementally computes higher hierarchy?
+# supp: supports
+# coe: coefficients
+# n: the number of variables
+function nctssos_first(supp::Vector{Vector{UInt16}}, coe, n::Int;
+        order = maximum(length.(supp)) ÷ 2,
+        newton=true,
+        reducebasis=true, # Q: what is the idea of reducebasis?
+        monosquare=true, TS="block",
+        obj="eigen",
+        partition=0,
+        constraint=nothing,
+        merge=false,
+        md=3,
+        solve=true,
+        Gram=false,
+        solver="Mosek",
+        QUIET=false,
+        cosmo_setting=cosmo_para())
     println("********************************** NCTSSOS **********************************")
     println("NCTSSOS is launching...")
-    if order == 0
-        order = Int(maximum(length.(supp))/2)
-    end
     if obj == "trace"
         supp,coe = cyclic_canon(supp, coe)
     else
-        supp,coe = sym_canon(supp, coe)
+        supp,coe = sym_canon(supp, coe)  # Q: does it hold for complex numbers?
     end
     if newton == true && constraint === nothing
         if obj == "trace"
@@ -68,7 +82,7 @@ function nctssos_first(supp::Vector{Vector{UInt16}}, coe, n::Int; order=0, newto
         basis = basis[ind]
     end
     ksupp = copy(supp)
-    if monosquare == true && TS != false
+    if monosquare == true && TS != false   # Q: What is monosquare? We do not need it for now
         if obj == "trace"
             append!(ksupp, [_cyclic_canon([item[end:-1:1]; item]) for item in basis])
         else
@@ -80,14 +94,15 @@ function nctssos_first(supp::Vector{Vector{UInt16}}, coe, n::Int; order=0, newto
         if constraint !== nothing
             reduce_cons!.(ksupp, constraint = constraint)
         end
-        sort!(ksupp)
-        unique!(ksupp)
+        unique!(sort!(ksupp))
     end
     if TS != false && QUIET == false
         println("Starting to compute the block structure...")
     end
+    # Q: what is the difference between supp and ksupp?
     blocks,cl,blocksize = get_blocks(ksupp, basis, TS=TS, QUIET=QUIET, merge=merge, md=md, obj=obj, partition=partition, constraint=constraint)
-    if reducebasis == true && obj == "eigen" && constraint === nothing
+    @show blocks
+    if reducebasis == true && obj == "eigen" && constraint === nothing  # we do not need this for now
         psupp = copy(supp)
         psupp = psupp[is_sym.(psupp)]
         push!(psupp, UInt16[])
@@ -103,8 +118,7 @@ function nctssos_first(supp::Vector{Vector{UInt16}}, coe, n::Int; order=0, newto
                 if partition > 0
                     ksupp = _comm.(ksupp, partition)
                 end
-                sort!(ksupp)
-                unique!(ksupp)
+                unique!(sort!(ksupp))
             end
             blocks,cl,blocksize = get_blocks(ksupp, basis, TS=TS, QUIET=QUIET, merge=merge, md=md, obj=obj)
         end
@@ -137,6 +151,7 @@ function nctssos_higher!(data::ncupop_type; TS="block", merge=false, md=3, solve
         println("Starting to compute the block structure...")
     end
     oblocksize = deepcopy(data.blocksize)
+    # Q: what is cl?
     blocks,cl,blocksize = get_blocks(ksupp, basis, TS=TS, QUIET=QUIET, merge=merge, md=md, obj=obj, partition=partition, constraint=constraint)
     if data.blocksize == oblocksize
         println("No higher TS step of the NCTSSOS hierarchy!")
@@ -198,20 +213,15 @@ end
 function newton_ncbasis(supp)
     nbasis = [UInt16[]]
     for bi in supp
-        if iseven(length(bi))
-            k = Int(length(bi)/2)
-            w = bi[end-k+1:end]
-            if isequal(w, bi[k:-1:1])
-                for j = 1:k
-                    push!(nbasis, w[end-j+1:end])
-                end
+        if iseven(length(bi)) && is_symmetric(bi)
+            for j = 1:length(bi)÷2
+                push!(nbasis, bi[end-j+1:end])
             end
         end
     end
-    sort!(nbasis)
-    unique!(nbasis)
-    return nbasis
+    return nbasis |> unique! |> sort!
 end
+is_symmetric(x) = x == reverse(x)
 
 function get_graph(ksupp, basis; obj="eigen", partition=0, constraint=nothing)
     lb = length(basis)

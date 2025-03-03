@@ -54,7 +54,7 @@ function cyclic_canon(supp, coe; type=Float64)
     ncoe = zeros(type, l)
     for (i,item) in enumerate(supp)
         bi = min(_cyclic_canon(item), _cyclic_canon(reverse(item)))
-        Locb = bfind(nsupp, l, bi)
+        Locb = searchsortedfirst(nsupp, bi)
         ncoe[Locb] += coe[i]
     end
     return nsupp,ncoe
@@ -84,20 +84,20 @@ function is_sym(a::Vector{UInt16})
 end
 
 function sym_canon(supp, coe; type=Float64)
-    nsupp = copy(supp)
-    nsupp = _sym_canon.(nsupp)
+    nsupp = _sym_canon.(supp)
     sort!(nsupp)
     unique!(nsupp)
     l = length(nsupp)
     ncoe = zeros(type, l)
     for (i,item) in enumerate(supp)
-        Locb = bfind(nsupp, l, _sym_canon(item))
+        Locb = searchsortedfirst(nsupp, _sym_canon(item))
         ncoe[Locb] += coe[i]
     end
     return nsupp,ncoe
 end
 
 function get_ncbasis(n, d; ind=Vector{UInt16}(1:n), binary=false)
+    @assert n == length(ind)
     basis = [UInt16[]]
     for i = 1:d
         append!(basis, _get_ncbasis_deg(n, i, ind=ind, binary=binary))
@@ -199,28 +199,9 @@ function _comm(w::Monomial{false}, x, partition)
     return prod([w.vars[ind1]; w.vars[ind2]] .^ [w.z[ind1]; w.z[ind2]])
 end
 
-function bfind(A, l, a; lt=isless, rev=false)
-    low = 1
-    high = l
-    while low <= high
-        mid = Int(ceil(1/2*(low+high)))
-        if isequal(A[mid], a)
-           return mid
-        elseif lt(A[mid], a)
-            if rev == false
-                low = mid+1
-            else
-                high = mid-1
-            end
-        else
-            if rev == false
-                high = mid-1
-            else
-                low = mid+1
-            end
-        end
-    end
-    return nothing
+function bfind(a, n, x; lt=isless, rev=false)
+    idx = searchsortedfirst(view(a, 1:n), x; lt, rev)
+    return x == a[idx] ? idx : nothing
 end
 
 function permutation(a)
@@ -266,7 +247,7 @@ function polys_info(pop, x)
             vars = mon[i].vars[ind]
             exp = mon[i].z[ind]
             for j = 1:length(vars)
-                l = bfind(x, n, vars[j], rev=true)
+                l = searchsortedfirst(x, vars[j]; rev=true)
                 append!(supp[k][i], l*ones(UInt16, exp[j]))
             end
         end
@@ -274,22 +255,20 @@ function polys_info(pop, x)
     return n,supp,coe
 end
 
+
+# | f
+# | - a: coefficients
+# | - x: monomials
+# | --- x[i].vars: variables     # NOTE: same for all i, allow repetition?!
+# | --- x[i].z: exponents
 function poly_info(f, x)
-    n = length(x)
-    mon = monomials(f)
-    coe = coefficients(f)
-    lm = length(mon)
-    supp = [UInt16[] for i=1:lm]
-    for i = 1:lm
-        ind = mon[i].z .> 0
-        vars = mon[i].vars[ind]
-        exp = mon[i].z[ind]
-        for j = 1:length(vars)
-            k = bfind(x, n, vars[j], rev=true)
-            append!(supp[i], k*ones(UInt16, exp[j]))
+    supp = map(monomials(f)) do mon
+        mapreduce(vcat, zip(mon.vars, mon.z)) do (var, exp)
+            k = searchsortedfirst(x, var; rev=true)
+            fill(UInt16(k), exp)
         end
     end
-    return n,supp,coe
+    return length(x), supp, coefficients(f)
 end
 
 function isless_td(a, b)
