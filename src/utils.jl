@@ -84,8 +84,7 @@ function is_sym(a::Vector{UInt16})
 end
 
 function sym_canon(supp, coe; type=Float64)
-    nsupp = copy(supp)
-    nsupp = _sym_canon.(nsupp)
+    nsupp = _sym_canon.(supp)
     sort!(nsupp)
     unique!(nsupp)
     l = length(nsupp)
@@ -98,6 +97,7 @@ function sym_canon(supp, coe; type=Float64)
 end
 
 function get_ncbasis(n, d; ind=Vector{UInt16}(1:n), binary=false)
+    @assert n == length(ind)
     basis = [UInt16[]]
     for i = 1:d
         append!(basis, _get_ncbasis_deg(n, i, ind=ind, binary=binary))
