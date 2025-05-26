@@ -5,6 +5,7 @@ mutable struct ncmpop_data
     supp # support data
     coe # coefficient data
     partition # the first 'partition' variables commutes with the remaining variables
+    comm_var # the first 'comm_var' variables commutes each other
     constraint # nothing or "projection" or "unipotent"
     obj # "eigen" or "trace"
     ksupp # extended support at the k-th step
@@ -12,8 +13,7 @@ mutable struct ncmpop_data
     cql # number of cliques
     cliques # cliques of variables
     cliquesize # numbers of cliques
-    J # constraints associated to each clique
-    ncc # constraints associated to no clique
+    I # constraints associated to each clique
     blocks # block structure
     cl # numbers of blocks
     blocksize # sizes of blocks
@@ -22,41 +22,47 @@ mutable struct ncmpop_data
 end
 
 """
-    opt,data = cs_nctssos_first(pop, x, d; numeq=0, CS="MF", TS="block", QUIET=false, obj="eigen", solve=true, Gram=false)
+    opt,data = cs_nctssos_first(pop, x, d; numeq=0, CS="MF", TS="block", QUIET=false, obj="eigen", partition=0, comm_var=0, constraint=nothing, solve=true, Gram=false)
 
 Compute the first step of the CS-NCTSSOS hierarchy for constrained noncommutative polynomial
 optimization with relaxation order `d`. Return the optimum and other auxiliary data.
 
 # Arguments
-- `pop`: the vector of the objective function, inequality constraints, and equality constraints.
-- `x`: the set of noncommuting variables.
-- `d`: the relaxation order of the moment-SOHS hierarchy.
-- `numeq`: the number of equality constraints.
+- `pop`: the vector of the objective function, inequality constraints, and equality constraints
+- `x`: the set of noncommuting variables
+- `d`: the relaxation order of the moment-SOHS hierarchy
+- `partition`: the first 'partition' variables commutes with the remaining variables
+- `comm_var`: the first 'comm_var' variables commutes each other
+- `constraint`: nothing or "projection" or "unipotent"
+- `numeq`: the number of equality constraints
 """
 function cs_nctssos_first(pop, x, d; numeq=0, CS="MF", minimize=false, TS="block", QUIET=false, obj="eigen", 
-    solve=true, Gram=false, partition=0, constraint=nothing, solver="Mosek", cosmo_setting=cosmo_para())
+    solve=true, Gram=false, partition=0, comm_var=0, constraint=nothing, solver="Mosek", cosmo_setting=cosmo_para())
     n,supp,coe = polys_info(pop, x)
     opt,data = cs_nctssos_first(supp, coe, n, d, numeq=numeq, CS=CS, minimize=minimize, TS=TS, QUIET=QUIET, obj=obj,
-    solve=solve, solver=solver, Gram=Gram, partition=partition, constraint=constraint, cosmo_setting=cosmo_setting)
+    solve=solve, solver=solver, Gram=Gram, partition=partition, comm_var=comm_var, constraint=constraint, cosmo_setting=cosmo_setting)
     return opt,data
 end
 
 """
     opt,data = cs_nctssos_first(supp::Vector{Vector{Vector{UInt16}}}, coe, n::Int, d::Int; numeq=0,
-    CS="MF", TS="block", QUIET=false, obj="eigen", solve=true, Gram=false)
+    CS="MF", TS="block", QUIET=false, obj="eigen", partition=0, comm_var=0, constraint=nothing, solve=true, Gram=false)
 
 Compute the first step of the CS-NCTSSOS hierarchy for constrained noncommutative polynomial optimization
 with relaxation order `d`. Here the polynomial optimization problem is defined by `supp` and `coe`,
 corresponding to the supports and coeffients of `pop` respectively. Return the optimum and other auxiliary data.
 
 # Arguments
-- `supp`: the supports of the polynomial optimization problem.
-- `coe`: the coeffients of the polynomial optimization problem.
-- `d`: the relaxation order of the moment-SOHS hierarchy.
-- `numeq`: the number of equality constraints.
+- `supp`: the supports of the polynomial optimization problem
+- `coe`: the coeffients of the polynomial optimization problem
+- `d`: the relaxation order of the moment-SOHS hierarchy
+- `partition`: the first 'partition' variables commutes with the remaining variables
+- `comm_var`: the first 'comm_var' variables commutes each other
+- `constraint`: nothing or "projection" or "unipotent"
+- `numeq`: the number of equality constraints
 """
 function cs_nctssos_first(supp::Vector{Vector{Vector{UInt16}}}, coe, n::Int, d::Int; numeq=0, CS="MF", solver="Mosek",
-    minimize=false, TS="block", QUIET=false, obj="eigen", solve=true, Gram=false, partition=0, constraint=nothing, cosmo_setting=cosmo_para())
+    minimize=false, TS="block", QUIET=false, obj="eigen", solve=true, Gram=false, partition=0, comm_var=0, constraint=nothing, cosmo_setting=cosmo_para())
     println("********************************** NCTSSOS **********************************")
     println("NCTSSOS is launching...")
     m = length(supp)-1
@@ -67,7 +73,7 @@ function cs_nctssos_first(supp::Vector{Vector{Vector{UInt16}}}, coe, n::Int, d::
         supp[1],coe[1] = sym_canon(supp[1], coe[1])
     end
     time = @elapsed begin
-    cliques,cql,cliquesize = clique_decomp(n, m, d, dg, supp, alg=CS, minimize=minimize)
+    cliques,cql,cliquesize = clique_decomp(n, m, supp, alg=CS, minimize=minimize)
     end
     if CS != false && QUIET == false
         mc = maximum(cliquesize)
@@ -76,19 +82,17 @@ function cs_nctssos_first(supp::Vector{Vector{Vector{UInt16}}}, coe, n::Int, d::
     if QUIET == false
         println("Starting to compute the block structure...")
     end
-    J,ncc = assign_constraint(m, supp, cliques, cql)
+    I = assign_constraint(m, supp, cliques, cql)
     basis = Vector{Vector{Vector{Vector{UInt16}}}}(undef, cql)
     for t = 1:cql
-        basis[t] = Vector{Vector{Vector{UInt16}}}(undef, length(J[t])+1)
+        basis[t] = Vector{Vector{Vector{UInt16}}}(undef, length(I[t])+1)
         basis[t][1] = get_ncbasis(cliquesize[t], d, ind=cliques[t], binary=constraint!==nothing)
-        for s = 1:length(J[t])
-            basis[t][s+1] = get_ncbasis(cliquesize[t], d-ceil(Int, dg[J[t][s]]/2), ind=cliques[t], binary=constraint!==nothing)
+        for s = 1:length(I[t])
+            basis[t][s+1] = get_ncbasis(cliquesize[t], d-ceil(Int, dg[I[t][s]]/2), ind=cliques[t], binary=constraint!==nothing)
         end
-        if partition > 0
-            for ba in basis[t]
-                ind = [_comm(item, partition) == item for item in ba]
-                ba = ba[ind]
-            end
+        for ba in basis[t]
+            ind = [_comm(item, partition, comm_var) == item for item in ba]
+            ba = ba[ind]
         end
     end
     tsupp = nothing
@@ -97,21 +101,21 @@ function cs_nctssos_first(supp::Vector{Vector{Vector{UInt16}}}, coe, n::Int, d::
         for i = 1:m
             append!(tsupp, supp[i+1])
         end
-        tsupp = reduce!.(tsupp, obj=obj, partition=partition, constraint=constraint)
+        tsupp = reduce!.(tsupp, obj=obj, partition=partition, comm_var=comm_var, constraint=constraint)
         sort!(tsupp)
         unique!(tsupp)
     end
     time = @elapsed begin
-    blocks,cl,blocksize = get_blocks(J, supp, tsupp, basis, cliques, cql, TS=TS, obj=obj, partition=partition, constraint=constraint)
+    blocks,cl,blocksize = get_blocks(I, supp, tsupp, basis, cliques, cql, TS=TS, obj=obj, partition=partition, comm_var=comm_var, constraint=constraint)
     end
     if TS != false && QUIET == false
         mb = maximum(maximum.([maximum.(blocksize[i]) for i = 1:cql]))
         println("Obtained the block structure in $time seconds.\nThe maximal size of blocks is $mb.")
     end
-    opt,ksupp,moment,GramMat = solvesdp(n, m, supp, coe, basis, cliques, cql, cliquesize, J, ncc, blocks, cl, blocksize,
-    numeq=numeq, QUIET=QUIET, obj=obj, solve=solve, solver=solver, Gram=Gram, partition=partition, constraint=constraint, cosmo_setting=cosmo_setting)
-    data = ncmpop_data(n, m, numeq, supp, coe, partition, constraint, obj, ksupp, basis, cql, cliques, cliquesize,
-    J, ncc, blocks, cl, blocksize, moment,GramMat)
+    opt,ksupp,moment,GramMat = solvesdp(m, supp, coe, basis, cql, I, blocks, cl, blocksize, numeq=numeq, QUIET=QUIET, obj=obj, solve=solve, 
+    solver=solver, Gram=Gram, partition=partition, comm_var=comm_var, constraint=constraint, cosmo_setting=cosmo_setting)
+    data = ncmpop_data(n, m, numeq, supp, coe, partition, comm_var, constraint, obj, ksupp, basis, cql, cliques, cliquesize, I, blocks, cl, blocksize, 
+    moment,GramMat)
     return opt,data
 end
 
@@ -128,15 +132,14 @@ function cs_nctssos_higher!(data::ncmpop_data; TS="block", QUIET=false, solve=tr
     supp = data.supp
     coe = data.coe
     partition = data.partition
+    comm_var = data.comm_var
     constraint = data.constraint
     obj = data.obj
     ksupp = data.ksupp
     basis = data.basis
     cql = data.cql
     cliques = data.cliques
-    cliquesize = data.cliquesize
-    J = data.J
-    ncc = data.ncc
+    I = data.I
     blocks = data.blocks
     cl = data.cl
     blocksize = data.blocksize
@@ -145,8 +148,8 @@ function cs_nctssos_higher!(data::ncmpop_data; TS="block", QUIET=false, solve=tr
     end
     oblocksize = deepcopy(data.blocksize)
     time = @elapsed begin
-    blocks,cl,blocksize = get_blocks(J, supp, ksupp, basis, cliques, cql, blocks=blocks, cl=cl, 
-    blocksize=blocksize, TS=TS, obj=obj, partition=partition, constraint=constraint)
+    blocks,cl,blocksize = get_blocks(I, supp, ksupp, basis, cliques, cql, blocks=blocks, cl=cl, 
+    blocksize=blocksize, TS=TS, obj=obj, partition=partition, comm_var=comm_var, constraint=constraint)
     end
     if blocksize == oblocksize
         println("No higher TS step of the CS-NCTSSOS hierarchy!")
@@ -156,8 +159,8 @@ function cs_nctssos_higher!(data::ncmpop_data; TS="block", QUIET=false, solve=tr
             mb = maximum(maximum.([maximum.(blocksize[i]) for i = 1:cql]))
             println("Obtained the block structure in $time seconds.\nThe maximal size of blocks is $mb.")
         end
-        opt,ksupp,moment,GramMat = solvesdp(n, m, supp, coe, basis, cliques, cql, cliquesize, J, ncc, blocks, cl, blocksize, numeq=numeq,
-        QUIET=QUIET, obj=obj, solve=solve, Gram=Gram, partition=partition, constraint=constraint, solver=solver, cosmo_setting=cosmo_setting)
+        opt,ksupp,moment,GramMat = solvesdp(m, supp, coe, basis, cql, I, blocks, cl, blocksize, numeq=numeq, QUIET=QUIET, obj=obj, solve=solve, 
+        Gram=Gram, partition=partition, comm_var=comm_var, constraint=constraint, solver=solver, cosmo_setting=cosmo_setting)
         data.moment = moment
         data.GramMat = GramMat
         data.ksupp = ksupp
@@ -168,15 +171,15 @@ function cs_nctssos_higher!(data::ncmpop_data; TS="block", QUIET=false, solve=tr
     return opt,data
 end
 
-function solvesdp(n, m, supp, coe, basis, cliques, cql, cliquesize, J, ncc, blocks, cl, blocksize; numeq=0, QUIET=false,
-    obj="eigen", solve=true, Gram=false, partition=0, constraint=nothing, solver="Mosek", cosmo_setting=cosmo_para())
+function solvesdp(m::Int, supp::Vector{Vector{Vector{UInt16}}}, coe, basis, cql, I, blocks, cl, blocksize; numeq=0, QUIET=false, obj="eigen", solve=true, Gram=false, 
+    partition=0, comm_var=0, constraint=nothing, solver="Mosek", cosmo_setting=cosmo_para())
     ksupp = Vector{UInt16}[]
     for i = 1:cql
         for j = 1:cl[i][1], k = 1:blocksize[i][1][j], r = k:blocksize[i][1][j]
             @inbounds bi = [basis[i][1][blocks[i][1][j][k]][end:-1:1]; basis[i][1][blocks[i][1][j][r]]]
             push!(ksupp, bi)
         end
-        for (j, w) in enumerate(J[i])
+        for (j, w) in enumerate(I[i])
             for l = 1:cl[i][j+1], t = 1:blocksize[i][j+1][l], r = t:blocksize[i][j+1][l], s = 1:length(supp[w+1])
                 ind1 = blocks[i][j+1][l][t]
                 ind2 = blocks[i][j+1][l][r]
@@ -185,10 +188,7 @@ function solvesdp(n, m, supp, coe, basis, cliques, cql, cliquesize, J, ncc, bloc
             end
         end
     end
-    for i ∈ ncc
-        append!(ksupp, supp[i+1])
-    end
-    ksupp = reduce!.(ksupp, obj=obj, partition=partition, constraint=constraint)
+    ksupp = reduce!.(ksupp, obj=obj, partition=partition, comm_var=comm_var, constraint=constraint)
     sort!(ksupp)
     unique!(ksupp)
     lksupp = length(ksupp)
@@ -215,7 +215,7 @@ function solvesdp(n, m, supp, coe, basis, cliques, cql, cliquesize, J, ncc, bloc
             if blocksize[i][1][l] == 1
                @inbounds pos = @variable(model, lower_bound=0)
                @inbounds bi = [basis[i][1][blocks[i][1][l][1]][end:-1:1]; basis[i][1][blocks[i][1][l][1]]]
-               bi = reduce!(bi, obj=obj, partition=partition, constraint=constraint)
+               bi = reduce!(bi, obj=obj, partition=partition, comm_var=comm_var, constraint=constraint)
                Locb = bfind(ksupp, lksupp,bi)
                @inbounds add_to_expression!(cons[Locb], pos)
             else
@@ -225,7 +225,7 @@ function solvesdp(n, m, supp, coe, basis, cliques, cql, cliquesize, J, ncc, bloc
                    @inbounds ind1 = blocks[i][1][l][t]
                    @inbounds ind2 = blocks[i][1][l][r]
                    @inbounds bi = [basis[i][1][ind1][end:-1:1]; basis[i][1][ind2]]
-                   bi = reduce!(bi, obj=obj, partition=partition, constraint=constraint)
+                   bi = reduce!(bi, obj=obj, partition=partition, comm_var=comm_var, constraint=constraint)
                    Locb = bfind(ksupp, lksupp, bi)
                    if t == r
                       @inbounds add_to_expression!(cons[Locb], pos[t,r])
@@ -235,20 +235,7 @@ function solvesdp(n, m, supp, coe, basis, cliques, cql, cliquesize, J, ncc, bloc
                end
             end
         end
-        for k = 1:length(ncc)
-            i = ncc[k]
-            if i <= m-numeq
-                pos = @variable(model, lower_bound=0)
-            else
-                pos = @variable(model)
-            end
-            for j = 1:length(supp[i+1])
-                bi = reduce!(bi, obj=obj, partition=partition, constraint=constraint)
-                Locb = bfind(ksupp, lksupp, bi)
-                @inbounds add_to_expression!(cons[Locb], coe[i+1][j], pos)
-            end
-        end
-        for i = 1:cql, (j, w) in enumerate(J[i])
+        for i = 1:cql, (j, w) in enumerate(I[i])
             for l = 1:cl[i][j+1]
                 bs = blocksize[i][j+1][l]
                 if bs == 1
@@ -260,7 +247,7 @@ function solvesdp(n, m, supp, coe, basis, cliques, cql, cliquesize, J, ncc, bloc
                     ind1 = blocks[i][j+1][l][1]
                     for s = 1:length(supp[w+1])
                         @inbounds bi = [basis[i][j+1][ind1][end:-1:1]; supp[w+1][s]; basis[i][j+1][ind1]]
-                        bi = reduce!(bi, obj=obj, partition=partition, constraint=constraint)
+                        bi = reduce!(bi, obj=obj, partition=partition, comm_var=comm_var, constraint=constraint)
                         Locb = bfind(ksupp, lksupp, bi)
                         @inbounds add_to_expression!(cons[Locb], coe[w+1][s], pos)
                     end
@@ -275,7 +262,7 @@ function solvesdp(n, m, supp, coe, basis, cliques, cql, cliquesize, J, ncc, bloc
                         ind2 = blocks[i][j+1][l][r]
                         for s = 1:length(supp[w+1])
                             @inbounds bi = [basis[i][j+1][ind1][end:-1:1]; supp[w+1][s]; basis[i][j+1][ind2]]
-                            bi = reduce!(bi, obj=obj, partition=partition, constraint=constraint)
+                            bi = reduce!(bi, obj=obj, partition=partition, comm_var=comm_var, constraint=constraint)
                             Locb = bfind(ksupp, lksupp, bi)
                             if t == r
                                 @inbounds add_to_expression!(cons[Locb], coe[w+1][s], pos[t,r])
@@ -328,7 +315,7 @@ function solvesdp(n, m, supp, coe, basis, cliques, cql, cliquesize, J, ncc, bloc
                 moment[i][k] = zeros(blocksize[i][1][k],blocksize[i][1][k])
                 for j = 1:blocksize[i][1][k], r = j:blocksize[i][1][k]
                     @inbounds bi = [basis[i][1][blocks[i][1][k][j]][end:-1:1]; basis[i][1][blocks[i][1][k][r]]]
-                    bi = reduce!(bi, obj=obj, partition=partition, constraint=constraint)
+                    bi = reduce!(bi, obj=obj, partition=partition, comm_var=comm_var, constraint=constraint)
                     Locb = bfind(ksupp, lksupp, bi)
                     moment[i][k][j,r] = dual_var[Locb]
                 end
@@ -339,7 +326,7 @@ function solvesdp(n, m, supp, coe, basis, cliques, cql, cliquesize, J, ncc, bloc
     return objv,ksupp,moment,GramMat
 end
 
-function get_blocks(J, supp::Vector{Vector{Vector{UInt16}}}, tsupp, basis, cliques, cql; TS="block", blocks=[], cl=[], blocksize=[], obj="eigen", partition=0, constraint=nothing)
+function get_blocks(I, supp::Vector{Vector{Vector{UInt16}}}, tsupp, basis, cliques, cql; TS="block", blocks=[], cl=[], blocksize=[], obj="eigen", partition=0, comm_var=0, constraint=nothing)
     if isempty(blocks)
         blocks = Vector{Vector{Vector{Vector{UInt16}}}}(undef, cql)
         cl = Vector{Vector{Int}}(undef, cql)
@@ -354,57 +341,45 @@ function get_blocks(J, supp::Vector{Vector{Vector{UInt16}}}, tsupp, basis, cliqu
                 else
                     append!(ksupp, [[item[end:-1:1]; item] for item in basis[i][1]])
                 end
-                ksupp = reduce!.(ksupp, obj=obj, partition=partition, constraint=constraint)
+                ksupp = reduce!.(ksupp, obj=obj, partition=partition, comm_var=comm_var, constraint=constraint)
                 sort!(ksupp)
                 unique!(ksupp)
             end
-            blocks[i] = Vector{Vector{Vector{UInt16}}}(undef, length(J[i])+1)
-            cl[i] = Vector{Int}(undef, length(J[i])+1)
-            blocksize[i] = Vector{Vector{Int}}(undef, length(J[i])+1)
-            blocks[i],cl[i],blocksize[i] = get_blocks(length(J[i]), ksupp, supp[J[i].+1], basis[i], QUIET=true, TS=TS, obj=obj, partition=partition, constraint=constraint)
+            blocks[i] = Vector{Vector{Vector{UInt16}}}(undef, length(I[i])+1)
+            cl[i] = Vector{Int}(undef, length(I[i])+1)
+            blocksize[i] = Vector{Vector{Int}}(undef, length(I[i])+1)
+            blocks[i],cl[i],blocksize[i] = get_cblocks(length(I[i]), ksupp, supp[I[i].+1], basis[i], QUIET=true, TS=TS, obj=obj, partition=partition, comm_var=comm_var, constraint=constraint)
         end
     else
         for i = 1:cql
             ind = [issubset(unique(item), cliques[i]) for item in tsupp]
-            blocks[i],cl[i],blocksize[i] = get_blocks(length(J[i]), tsupp[ind], supp[J[i].+1], basis[i], QUIET=true, TS=TS, obj=obj, partition=partition, constraint=constraint)
+            blocks[i],cl[i],blocksize[i] = get_cblocks(length(I[i]), tsupp[ind], supp[I[i].+1], basis[i], QUIET=true, TS=TS, obj=obj, partition=partition, comm_var=comm_var, constraint=constraint)
         end
     end
     return blocks,cl,blocksize
 end
 
 function assign_constraint(m, supp, cliques, cql)
-    J = [UInt16[] for i=1:cql]
-    ncc = UInt16[]
+    I = [UInt16[] for i=1:cql]
     for i = 1:m
         ind = findall(k->issubset(unique(Base.reduce(vcat, supp[i+1])), cliques[k]), 1:cql)
-        if isempty(ind)
-            push!(ncc, i)
-        else
-            push!.(J[ind], i)
-        end
+        push!.(I[ind], i)
     end
-    return J,ncc
+    return I
 end
 
-function clique_decomp(n::Int, m::Int, d::Int, dg::Vector{Int}, supp::Vector{Vector{Vector{UInt16}}}; alg="MF", minimize=false)
+function clique_decomp(n::Int, m::Int, supp::Vector{Vector{Vector{UInt16}}}; alg="MF", minimize=false)
     if alg == false
         cliques = [UInt16[i for i=1:n]]
         cql = 1
         cliquesize=[n]
     else
         G = SimpleGraph(n)
-        for i = 1:m+1
-            if i == 1 || d == ceil(Int, dg[i-1]/2)
-                for j = 1:length(supp[i])
-                    add_clique!(G, unique(supp[i][j]))
-                end
-            else
-                temp = copy(supp[i][1])
-                for j = 2:length(supp[i])
-                    append!(temp, supp[i][j])
-                end
-                add_clique!(G, unique(temp))
-            end
+        for item in supp[1]
+            add_clique!(G, unique(item))
+        end
+        for i = 2:m+1
+            add_clique!(G, unique(Base.reduce(vcat, supp[i])))
         end
         if alg == "NC"
             cliques,cql,cliquesize = max_cliques(G)
