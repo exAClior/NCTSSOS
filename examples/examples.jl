@@ -2,6 +2,7 @@ using DynamicPolynomials
 using DelimitedFiles
 using Plots
 using NCTSSOS
+using BenchmarkTools
 
 n = 3
 @ncpolyvar x[1:3]

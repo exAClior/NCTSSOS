@@ -148,6 +148,8 @@ function pstateopt_first(st_supp::Vector{Vector{Vector{Vector{Int}}}}, coe, n, d
     tbasis = Vector{Vector{Vector{UInt16}}}(undef, m+1)
     basis = Vector{Vector{Vector{UInt16}}}(undef, m+1)
     wbasis[1],tbasis[1],basis[1] = get_wbasis(n, d, ptsupp, bsupp, scalar=scalar)
+    @show length(tbasis[1])
+    @show tbasis[1]
     ksupp = copy(supp[1])
     for i = 1:m
         wbasis[i+1],tbasis[i+1],basis[i+1] = get_wbasis(n, d-Int(ceil(dg[i]/2)), ptsupp, bsupp, scalar=scalar)

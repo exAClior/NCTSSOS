@@ -2,6 +2,7 @@
 # Examples below are taken from the paper: "State polynomials: positivity, optimization and nonlinear Bell inequalities"
 using NCTSSOS
 using LinearAlgebra
+using BenchmarkTools
 
 ## Example 7.2.0
 n = 4 # number of variables
