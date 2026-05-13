@@ -10,6 +10,7 @@ using MetaGraphs
 using LinearAlgebra
 using SparseArrays
 using COSMO
+using Clarabel
 import DynamicPolynomials as DP
 
 export nctssos_first, nctssos_higher!, cs_nctssos_first, cs_nctssos_higher!, ptraceopt_first, ptraceopt_higher!, 

@@ -369,6 +369,8 @@ function solvesdp(order::Int, n::Int, m::Int, supp, coe, basis, blocks, cl, bloc
             model = Model(optimizer_with_attributes(Mosek.Optimizer))
         elseif solver == "COSMO"
             model = Model(optimizer_with_attributes(COSMO.Optimizer, "eps_abs" => cosmo_setting.eps_abs, "eps_rel" => cosmo_setting.eps_rel, "max_iter" => cosmo_setting.max_iter))
+        elseif solver == "Clarabel"
+            model = Model(optimizer_with_attributes(Clarabel.Optimizer))
         else
             @error "The solver is currently not supported!"
             return nothing,nothing,nothing,nothing

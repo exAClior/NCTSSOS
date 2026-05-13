@@ -261,6 +261,8 @@ function pstate_SDP(supp, coe, ptsupp, wbasis, tbasis, basis, blocks, cl, blocks
         end
         if solver == "COSMO"
             model = Model(optimizer_with_attributes(COSMO.Optimizer, "eps_abs" => cosmo_setting.eps_abs, "eps_rel" => cosmo_setting.eps_rel, "max_iter" => cosmo_setting.max_iter))
+        elseif solver == "Clarabel"
+            model = Model(optimizer_with_attributes(Clarabel.Optimizer))
         else
             model = Model(optimizer_with_attributes(Mosek.Optimizer))
         end
